@@ -1,0 +1,95 @@
+steps:
+  - name: 'maven:3-jdk-11'
+    args:
+      - 'spring-boot:build-image'
+      - '-Pk8s'
+      - >-
+        -DREPOSITORY_PREFIX=europe-central2-docker.pkg.dev/heroic-oarlock-329616/petclinic-repo
+    entrypoint: mvn
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        europe-central2-docker.pkg.dev/heroic-oarlock-329616/petclinic-repo/spring-petclinic-cloud-api-gateway:latest
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        europe-central2-docker.pkg.dev/heroic-oarlock-329616/petclinic-repo/spring-petclinic-cloud-customers-service:latest
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        europe-central2-docker.pkg.dev/heroic-oarlock-329616/petclinic-repo/spring-petclinic-cloud-vets-service:latest
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        europe-central2-docker.pkg.dev/heroic-oarlock-329616/petclinic-repo/spring-petclinic-cloud-visits-service:latest
+  - name: gcr.io/cloud-builders/kubectl
+    env:
+      - CLOUDSDK_COMPUTE_ZONE=europe-central2-b
+      - CLOUDSDK_CONTAINER_CLUSTER=petclinic
+    args:
+      - apply
+      - '-f'
+      - k8s/init-namespace/
+  - name: gcr.io/cloud-builders/kubectl
+    env:
+      - CLOUDSDK_COMPUTE_ZONE=europe-central2-b
+      - CLOUDSDK_CONTAINER_CLUSTER=petclinic
+    args:
+      - apply
+      - '-f'
+      - k8s/init-services/
+  - name: gcr.io/cloud-builders/gcloud
+    env:
+      - >-
+        REPOSITORY_PREFIX=europe-central2-docker.pkg.dev/heroic-oarlock-329616/petclinic-repo
+    args:
+      - ./scripts/deployToKubernetes.sh
+    entrypoint: bash
+  - name: gcr.io/cloud-builders/kubectl
+    env:
+      - CLOUDSDK_COMPUTE_ZONE=europe-central2-b
+      - CLOUDSDK_CONTAINER_CLUSTER=petclinic
+    args:
+      - rollout
+      - restart
+      - deployment
+      - api-gateway
+      - '-n'
+      - spring-petclinic
+  - name: gcr.io/cloud-builders/kubectl
+    env:
+      - CLOUDSDK_COMPUTE_ZONE=europe-central2-b
+      - CLOUDSDK_CONTAINER_CLUSTER=petclinic
+    args:
+      - rollout
+      - restart
+      - deployment
+      - customers-service
+      - '-n'
+      - spring-petclinic
+  - name: gcr.io/cloud-builders/kubectl
+    env:
+      - CLOUDSDK_COMPUTE_ZONE=europe-central2-b
+      - CLOUDSDK_CONTAINER_CLUSTER=petclinic
+    args:
+      - rollout
+      - restart
+      - deployment
+      - vets-service
+      - '-n'
+      - spring-petclinic
+  - name: gcr.io/cloud-builders/kubectl
+    env:
+      - CLOUDSDK_COMPUTE_ZONE=europe-central2-b
+      - CLOUDSDK_CONTAINER_CLUSTER=petclinic
+    args:
+      - rollout
+      - restart
+      - deployment
+      - visits-service
+      - '-n'
+      - spring-petclinic
